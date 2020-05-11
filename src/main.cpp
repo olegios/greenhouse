@@ -1,9 +1,32 @@
 #include <Arduino.h>
+#include <ESP8266WiFi.h>
+
+#include "credentials.hpp"
+
+
+static void wifi_connection();
+
 
 void setup() {
-  // put your setup code here, to run once:
+  Serial.begin(115200);
+  wifi_connection();
 }
 
+
 void loop() {
-  // put your main code here, to run repeatedly:
+}
+
+
+static void wifi_connection() {
+  WiFi.hostname("Greenhouse");
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  Serial.print("Connecting");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  Serial.print("\nConnected, IP address: ");
+  Serial.println(WiFi.localIP());
 }
