@@ -18,9 +18,12 @@
 #define B_TEMRMINAL        V0
 #define B_TEMPERATURE      V1
 #define B_HUMIDITY         V2
+#define B_SMOI_SENSOR      V3
 
 #define DHT_SENSOR_PIN     2
 #define DHT_SENSOR_TYPE    DHT11
+
+#define SMOI_SENSOR_PIN    0
 
 
 static BlynkTimer blynk_timer;
@@ -30,12 +33,16 @@ static DHT dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
 static float temperature;
 static float humidity;
 
+static int smoi_sensor_value;
+
 
 static void wifi_connection(void);
 static void arduino_ota_setup(void);
 static void blynk_setup(void);
+static void smoi_sensor_begin(void);
 
 static void dht_sensor_data(void);
+static void smoi_sensor_data(void);
 
 
 void setup(void) {
@@ -45,6 +52,7 @@ void setup(void) {
   blynk_setup();
 
   dht_sensor.begin();
+  smoi_sensor_begin();
 }
 
 
@@ -54,6 +62,7 @@ void loop(void) {
   blynk_timer.run();
 
   blynk_timer.setInterval(1000L, dht_sensor_data);
+  blynk_timer.setInterval(10000L, smoi_sensor_data);
 }
 
 
@@ -141,4 +150,15 @@ static void dht_sensor_data(void) {
 
   Blynk.virtualWrite(B_TEMPERATURE, temperature);
   Blynk.virtualWrite(B_HUMIDITY, humidity);
+}
+
+
+static void smoi_sensor_begin(void) {
+  smoi_sensor_value = 100;
+}
+
+
+static void smoi_sensor_data(void) {
+  smoi_sensor_value = map(analogRead(SMOI_SENSOR_PIN),0,1024,100,0);
+  Blynk.virtualWrite(B_SMOI_SENSOR, smoi_sensor_value);
 }
