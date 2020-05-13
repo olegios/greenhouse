@@ -19,30 +19,45 @@
 #define B_TEMPERATURE      V1
 #define B_HUMIDITY         V2
 #define B_SMOI_SENSOR      V3
+#define B_TAP_STATUS_LED   V12
+#define B_TAP_MODE_BUTTON  20
+#define B_SMOI_TRIGER      30
 
 #define DHT_SENSOR_PIN     2
 #define DHT_SENSOR_TYPE    DHT11
 
 #define SMOI_SENSOR_PIN    0
+#define TAP_RELAY_PIN      5
+
+
+typedef enum {
+  AUTO,
+  MANUAL
+}tmode_t;
 
 
 static BlynkTimer blynk_timer;
 static WidgetTerminal blynk_terminal(B_TEMRMINAL);
+static WidgetLED tap_status_led(B_TAP_STATUS_LED);
 
 static DHT dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
 static float temperature;
 static float humidity;
 
 static int smoi_sensor_value;
+static int smoi_triger;
+static tmode_t tap_mode;
 
 
 static void wifi_connection(void);
 static void arduino_ota_setup(void);
 static void blynk_setup(void);
 static void smoi_sensor_begin(void);
+static void tap_relay_begin(void);
 
 static void dht_sensor_data(void);
 static void smoi_sensor_data(void);
+static void check_soil_moisture(void);
 
 
 void setup(void) {
@@ -53,6 +68,7 @@ void setup(void) {
 
   dht_sensor.begin();
   smoi_sensor_begin();
+  tap_relay_begin();
 }
 
 
@@ -61,8 +77,9 @@ void loop(void) {
   Blynk.run();
   blynk_timer.run();
 
-  blynk_timer.setInterval(1000L, dht_sensor_data);
-  blynk_timer.setInterval(10000L, smoi_sensor_data);
+  blynk_timer.setInterval(5000L, dht_sensor_data);
+  blynk_timer.setInterval(5000L, smoi_sensor_data);
+  blynk_timer.setInterval(1000L, check_soil_moisture);
 }
 
 
@@ -155,10 +172,48 @@ static void dht_sensor_data(void) {
 
 static void smoi_sensor_begin(void) {
   smoi_sensor_value = 100;
+  smoi_triger = 50;
+  Blynk.virtualWrite(B_SMOI_TRIGER, smoi_triger);
 }
 
+BLYNK_WRITE(B_SMOI_TRIGER) {
+  smoi_triger = param.asInt();
+  Serial.printf("Smoi triger: %d\n", smoi_triger);
+}
 
 static void smoi_sensor_data(void) {
   smoi_sensor_value = map(analogRead(SMOI_SENSOR_PIN),0,1024,100,0);
   Blynk.virtualWrite(B_SMOI_SENSOR, smoi_sensor_value);
+}
+
+
+BLYNK_WRITE(B_TAP_MODE_BUTTON) {
+  tap_mode = (tap_mode == AUTO) ? MANUAL : AUTO;
+  const char * property_color = (tap_mode == AUTO) ? "#43d356" : "#D3435C";
+  Blynk.setProperty(B_TAP_MODE_BUTTON, "color", property_color);
+  Blynk.setProperty(B_TAP_STATUS_LED, "color", property_color);
+}
+
+static void tap_relay_begin(void) {
+  pinMode(TAP_RELAY_PIN, OUTPUT);
+  tap_mode = AUTO;
+}
+
+static void check_soil_moisture()
+{
+  if (tap_mode == AUTO) {
+    if (smoi_sensor_value < smoi_triger) {
+      digitalWrite(TAP_RELAY_PIN, LOW);
+      tap_status_led.on();
+      Serial.println("TAP OPEN");
+    } else {
+      digitalWrite(TAP_RELAY_PIN, HIGH);
+      tap_status_led.off();
+      Serial.println("TAP CLOSE");
+    }
+  } else {
+    digitalWrite(TAP_RELAY_PIN, LOW);
+    tap_status_led.on();
+    Serial.println("Manual_mode: TAP OPEN");
+  }
 }
