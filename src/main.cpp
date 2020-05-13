@@ -23,11 +23,11 @@
 #define B_TAP_MODE_BUTTON  20
 #define B_SMOI_TRIGER      30
 
-#define DHT_SENSOR_PIN     2
+#define DHT_SENSOR_PIN     D4
 #define DHT_SENSOR_TYPE    DHT11
 
-#define SMOI_SENSOR_PIN    0
-#define TAP_RELAY_PIN      5
+#define SMOI_SENSOR_PIN    A0
+#define TAP_RELAY_PIN      D1
 
 
 typedef enum {
