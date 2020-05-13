@@ -7,20 +7,35 @@
 
 #include <BlynkSimpleEsp8266.h>
 
+#include <DHT.h>
+#include <SPI.h>
+#include <Wire.h>
+
 #include "credentials.hpp"
 
 
 #define BLYNK_PRINT        Serial
 #define B_TEMRMINAL        V0
+#define B_TEMPERATURE      V1
+#define B_HUMIDITY         V2
+
+#define DHT_SENSOR_PIN     2
+#define DHT_SENSOR_TYPE    DHT11
 
 
 static BlynkTimer blynk_timer;
 static WidgetTerminal blynk_terminal(B_TEMRMINAL);
 
+static DHT dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
+static float temperature;
+static float humidity;
+
 
 static void wifi_connection(void);
 static void arduino_ota_setup(void);
 static void blynk_setup(void);
+
+static void dht_sensor_data(void);
 
 
 void setup(void) {
@@ -28,11 +43,17 @@ void setup(void) {
   wifi_connection();
   arduino_ota_setup();
   blynk_setup();
+
+  dht_sensor.begin();
 }
 
 
 void loop(void) {
   ArduinoOTA.handle();
+  Blynk.run();
+  blynk_timer.run();
+
+  blynk_timer.setInterval(1000L, dht_sensor_data);
 }
 
 
@@ -101,8 +122,23 @@ static void arduino_ota_setup(void) {
   Serial.printf("OTA Ready, free space available: %.f bytes\n",(float)ESP.getFreeSketchSpace());
 }
 
+
 static void blynk_setup(void) {
   Blynk.begin(AUTH_TOKEN, WIFI_SSID, WIFI_PASS);
   blynk_terminal.println(F("Setup successful"));
   blynk_terminal.flush();
+}
+
+
+static void dht_sensor_data(void) {
+  temperature = dht_sensor.readTemperature();
+  humidity = dht_sensor.readHumidity();
+  if (isnan(temperature) || isnan(humidity)) {
+    Serial.println("Failed to read from DHT sensor!");
+    temperature = -1;
+    humidity = -1;
+  }
+
+  Blynk.virtualWrite(B_TEMPERATURE, temperature);
+  Blynk.virtualWrite(B_HUMIDITY, humidity);
 }
