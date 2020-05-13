@@ -3,6 +3,7 @@
 ## Requarements
 
 - [PlatformIO](https://docs.platformio.org/en/latest/what-is-platformio.html)
+- [Blynk](https://docs.blynk.cc/)
 
 ## HOW-TO
 

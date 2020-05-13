@@ -5,17 +5,29 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
+#include <BlynkSimpleEsp8266.h>
+
 #include "credentials.hpp"
+
+
+#define BLYNK_PRINT        Serial
+#define B_TEMRMINAL        V0
+
+
+static BlynkTimer blynk_timer;
+static WidgetTerminal blynk_terminal(B_TEMRMINAL);
 
 
 static void wifi_connection(void);
 static void arduino_ota_setup(void);
+static void blynk_setup(void);
 
 
 void setup(void) {
   Serial.begin(115200);
   wifi_connection();
   arduino_ota_setup();
+  blynk_setup();
 }
 
 
@@ -87,4 +99,10 @@ static void arduino_ota_setup(void) {
 
   ArduinoOTA.begin();
   Serial.printf("OTA Ready, free space available: %.f bytes\n",(float)ESP.getFreeSketchSpace());
+}
+
+static void blynk_setup(void) {
+  Blynk.begin(AUTH_TOKEN, WIFI_SSID, WIFI_PASS);
+  blynk_terminal.println(F("Setup successful"));
+  blynk_terminal.flush();
 }
