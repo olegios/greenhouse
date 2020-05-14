@@ -13,6 +13,7 @@
 
 #include "credentials.hpp"
 
+#define ATOMIC_FS_UPDATE
 
 #define BLYNK_PRINT        Serial
 #define B_TEMRMINAL        V0
@@ -22,12 +23,16 @@
 #define B_TAP_STATUS_LED   V12
 #define B_TAP_MODE_BUTTON  20
 #define B_SMOI_TRIGER      30
+#define B_TANK_LEVEL       40
 
 #define DHT_SENSOR_PIN     D4
 #define DHT_SENSOR_TYPE    DHT11
 
 #define SMOI_SENSOR_PIN    A0
 #define TAP_RELAY_PIN      D1
+
+#define HC_SR04_TRIG_PIN   D6
+#define HC_SR04_ECHO_PIN   D7 
 
 
 typedef enum {
@@ -47,6 +52,7 @@ static float humidity;
 static int smoi_sensor_value;
 static int smoi_triger;
 static tmode_t tap_mode;
+static long hc_sr04_distance;
 
 
 static void wifi_connection(void);
@@ -54,10 +60,12 @@ static void arduino_ota_setup(void);
 static void blynk_setup(void);
 static void smoi_sensor_begin(void);
 static void tap_relay_begin(void);
+static void hc_sr04_begin(void);
 
 static void dht_sensor_data(void);
 static void smoi_sensor_data(void);
 static void check_soil_moisture(void);
+static void check_tank_level(void);
 
 
 void setup(void) {
@@ -69,9 +77,10 @@ void setup(void) {
   dht_sensor.begin();
   smoi_sensor_begin();
   tap_relay_begin();
+  hc_sr04_begin();
 }
 
-
+ 
 void loop(void) {
   ArduinoOTA.handle();
   Blynk.run();
@@ -80,6 +89,7 @@ void loop(void) {
   blynk_timer.setInterval(5000L, dht_sensor_data);
   blynk_timer.setInterval(5000L, smoi_sensor_data);
   blynk_timer.setInterval(1000L, check_soil_moisture);
+  blynk_timer.setInterval(5000L, check_tank_level);
 }
 
 
@@ -217,3 +227,32 @@ static void check_soil_moisture()
     Serial.println("Manual_mode: TAP OPEN");
   }
 }
+
+
+static void hc_sr04_begin(void) {
+  pinMode(HC_SR04_TRIG_PIN, OUTPUT);
+  pinMode(HC_SR04_ECHO_PIN, INPUT);
+}
+
+static void check_tank_level(void) {
+  /* The following trigPin/echoPin cycle is used to determine the
+  distance of the nearest object by bouncing soundwaves off of it. */
+  digitalWrite(HC_SR04_TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(HC_SR04_TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(HC_SR04_TRIG_PIN, LOW);
+  long duration = pulseIn(HC_SR04_ECHO_PIN, HIGH);
+  //Calculate the distance (in cm) based on the speed of sound.
+  hc_sr04_distance = duration/58.2;
+  Serial.println("hc_sr04_distance: ");
+  Serial.println(hc_sr04_distance);
+  
+  Blynk.virtualWrite(B_TANK_LEVEL, hc_sr04_distance);
+  if (hc_sr04_distance < 5) {
+    Blynk.notify("Greenhouse water tank is empty!");
+  }
+  //Delay 50ms before next reading.
+}
+
+
